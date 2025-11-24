@@ -46,6 +46,8 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
       const borderTop = 0.08;
       const borderSide = 0.08;
       const borderBottom = 0.16;
+      const TIMESTAMP_FONT_SIZE_RATIO = 0.04;
+      const TIMESTAMP_VERTICAL_POSITION_DIVISOR = 2.5;
       
       // Calculate dimensions
       const imageWidth = img.width;
@@ -66,11 +68,18 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
       ctx.drawImage(img, x, y, imageWidth, imageHeight);
       
       // Add timestamp at bottom
-      const timestamp = new Date(data.timestamp).toLocaleTimeString();
+      const timestamp = new Date(data.timestamp).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
       ctx.fillStyle = '#6b7280'; // gray-500
-      ctx.font = `${imageHeight * 0.04}px serif`;
+      ctx.font = `${imageHeight * TIMESTAMP_FONT_SIZE_RATIO}px serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(timestamp, canvasWidth / 2, canvasHeight - imageHeight * borderBottom / 2.5);
+      ctx.fillText(
+        timestamp, 
+        canvasWidth / 2, 
+        canvasHeight - imageHeight * borderBottom / TIMESTAMP_VERTICAL_POSITION_DIVISOR
+      );
       
       // Download the canvas as image
       canvas.toBlob((blob) => {
