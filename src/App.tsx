@@ -103,9 +103,9 @@ function App() {
       <main className="w-full h-screen relative">
         <div className="w-full h-full relative">
           {photos.length === 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none px-4">
               <CameraIcon size={64} className="mb-4 opacity-20" />
-              <p className="text-xl font-light">点击左下角相机开始拍摄</p>
+              <p className="text-xl md:text-xl text-center font-light">点击左下角相机开始拍摄</p>
             </div>
           )}
           
@@ -124,7 +124,7 @@ function App() {
       <div 
         ref={trashRef}
         className={`
-          fixed bottom-10 right-10 z-40 transition-all duration-300
+          fixed bottom-4 right-4 md:bottom-10 md:right-10 z-40 transition-all duration-300
           flex items-center justify-center
           ${isDraggingOverTrash ? 'scale-110' : 'hover:scale-105'}
         `}
@@ -135,7 +135,7 @@ function App() {
       </div>
 
       {/* Bottom Left Camera Trigger */}
-      <div className="fixed bottom-10 left-10 z-50">
+      <div className="fixed bottom-4 left-4 md:bottom-10 md:left-10 z-50">
         <SkeuomorphicCamera 
           onTakePhoto={handleTakePhoto} 
         />

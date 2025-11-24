@@ -93,11 +93,19 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        // Apply filter
-        context.filter = activeFilter.value;
+        // Clear any previous filter
+        context.filter = 'none';
         
-        // Draw
+        // Apply the selected filter
+        if (activeFilter.value !== 'none') {
+          context.filter = activeFilter.value;
+        }
+        
+        // Draw the video frame with the filter applied
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Reset filter to avoid affecting other operations
+        context.filter = 'none';
         
         const photoUrl = canvas.toDataURL('image/png');
         
@@ -132,7 +140,7 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
     <div 
       className={`
         relative transition-all duration-500 ease-in-out
-        ${isOpen ? 'w-72 h-64' : 'w-48 h-40'}
+        ${isOpen ? 'w-64 h-56 md:w-72 md:h-64' : 'w-36 h-32 md:w-48 md:h-40'}
       `}
     >
       {/* Printing Photo Animation */}
@@ -232,27 +240,63 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
           title={error || "Take Photo"}
         ></button>
 
-        {/* Filter Controls (Only visible when open) */}
+        {/* Filter Dial (Only visible when open) - Skeuomorphic Design */}
         <div className={`
-          absolute bottom-3 left-0 w-full flex justify-center gap-2 transition-all duration-300
+          absolute -bottom-6 left-1/2 transform -translate-x-1/2 transition-all duration-300
           ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
           z-30
         `}>
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.name}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveFilter(filter);
+          {/* Dial Base */}
+          <div className="relative w-24 h-24 bg-neutral-900 rounded-full border-4 border-neutral-700 shadow-2xl">
+            {/* Dial center knob */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-neutral-800 rounded-full border-2 border-neutral-600 shadow-inner"></div>
+            
+            {/* Filter indicator line */}
+            <div 
+              className="absolute top-2 left-1/2 w-0.5 h-6 bg-red-500 transition-transform duration-300 origin-bottom"
+              style={{ 
+                transform: `translateX(-50%) rotate(${FILTERS.findIndex(f => f.name === activeFilter.name) * (360 / FILTERS.length)}deg)`
               }}
-              className={`
-                w-6 h-6 rounded-full border-2 shadow-lg transition-transform hover:scale-125
-                ${activeFilter.name === filter.name ? 'border-white scale-110 ring-2 ring-white/50' : 'border-neutral-600'}
-              `}
-              style={{ backgroundColor: filter.color }}
-              title={filter.name}
-            />
-          ))}
+            ></div>
+            
+            {/* Filter positions around the dial */}
+            {FILTERS.map((filter, index) => {
+              const angle = (index * 360 / FILTERS.length) - 90; // Start from top
+              const radian = (angle * Math.PI) / 180;
+              const radius = 32;
+              const x = Math.cos(radian) * radius;
+              const y = Math.sin(radian) * radius;
+              
+              return (
+                <button
+                  key={filter.name}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveFilter(filter);
+                  }}
+                  className={`
+                    absolute top-1/2 left-1/2 w-5 h-5 rounded-full border-2 shadow-lg transition-all
+                    ${activeFilter.name === filter.name 
+                      ? 'border-white scale-125 ring-2 ring-white/50 z-10' 
+                      : 'border-neutral-600 hover:scale-110 hover:border-neutral-400'
+                    }
+                  `}
+                  style={{ 
+                    backgroundColor: filter.color,
+                    transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+                  }}
+                  title={filter.name}
+                />
+              );
+            })}
+            
+            {/* Filter name label */}
+            <div className="absolute -bottom-7 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+              <span className="text-xs font-bold text-neutral-300 bg-neutral-800/80 px-2 py-0.5 rounded">
+                {activeFilter.name}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
       

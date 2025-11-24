@@ -60,15 +60,15 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
           onAnimationEnd={() => setIsAnimating(false)}
         >
           <div 
-            className="bg-white p-3 pb-12 shadow-xl transition-transform hover:scale-105 hover:shadow-2xl w-64 relative"
+            className="bg-white p-2 pb-8 md:p-3 md:pb-12 shadow-xl transition-transform hover:scale-105 hover:shadow-2xl w-48 md:w-64 relative"
             style={{
               transform: `rotate(${data.rotation}deg)`,
             }}
           >
             {/* Pin Indicator (Visible when pinned) */}
             {data.isPinned && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-20 text-red-500 drop-shadow-md">
-                <Pin size={24} fill="currentColor" />
+              <div className="absolute -top-2 md:-top-3 left-1/2 transform -translate-x-1/2 z-20 text-red-500 drop-shadow-md">
+                <Pin size={20} className="md:w-6 md:h-6" fill="currentColor" />
               </div>
             )}
 
@@ -79,32 +79,32 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
                 className="w-full h-full object-cover pointer-events-none"
               />
               
-              {/* Action Buttons */}
-              <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Action Buttons - Always visible on mobile, hover on desktop */}
+              <div className="absolute top-1 right-1 md:top-2 md:right-2 flex gap-1 md:gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   aria-label={data.isPinned ? "Unpin photo" : "Pin photo"}
                   onClick={(e) => {
                     e.stopPropagation();
                     onTogglePin(data.id);
                   }}
-                  className={`p-1.5 rounded-full text-white transition-colors shadow-sm ${
+                  className={`p-1 md:p-1.5 rounded-full text-white transition-colors shadow-sm ${
                     data.isPinned ? 'bg-blue-500 hover:bg-blue-600' : 'bg-black/30 hover:bg-blue-500'
                   }`}
                   title={data.isPinned ? "Unpin" : "Pin"}
                 >
-                  <Pin size={14} className={data.isPinned ? "fill-current" : ""} />
+                  <Pin size={12} className="md:w-3.5 md:h-3.5" strokeWidth={data.isPinned ? 0 : 2} fill={data.isPinned ? "currentColor" : "none"} />
                 </button>
                 <button
                   aria-label="Download photo"
                   onClick={handleDownload}
-                  className="bg-black/30 hover:bg-green-500 text-white p-1.5 rounded-full transition-colors shadow-sm"
+                  className="bg-black/30 hover:bg-green-500 text-white p-1 md:p-1.5 rounded-full transition-colors shadow-sm"
                   title="Download"
                 >
-                  <Download size={14} />
+                  <Download size={12} className="md:w-3.5 md:h-3.5" />
                 </button>
               </div>
             </div>
-            <div className="text-center font-serif text-gray-600 text-sm">
+            <div className="text-center font-serif text-gray-600 text-xs md:text-sm">
               {new Date(data.timestamp).toLocaleTimeString()}
             </div>
           </div>
