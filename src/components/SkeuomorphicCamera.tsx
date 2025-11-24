@@ -110,14 +110,31 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
       const context = canvas.getContext('2d');
 
       if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Define border size for Polaroid effect
+        const borderSize = 20;
+        const bottomBorder = 60;
+        
+        // Set canvas size to include border
+        canvas.width = video.videoWidth + (borderSize * 2);
+        canvas.height = video.videoHeight + borderSize + bottomBorder;
+        
+        // Fill white background
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, canvas.width, canvas.height);
         
         // Apply the selected filter
         context.filter = activeFilter.value;
         
-        // Draw the video frame with the filter applied
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Draw the video frame mirrored to match preview
+        context.save();
+        context.translate(canvas.width, 0);
+        context.scale(-1, 1);
+        
+        // Draw video centered horizontally within the borders
+        // Due to mirroring, drawing at x=borderSize places it correctly
+        context.drawImage(video, borderSize, borderSize, video.videoWidth, video.videoHeight);
+        
+        context.restore();
         
         // Reset filter to avoid affecting other operations
         context.filter = 'none';
@@ -263,43 +280,46 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         `}>
           {/* Dial Base */}
           <div className="relative w-24 h-24 bg-neutral-900 rounded-full border-4 border-neutral-700 shadow-2xl">
-            {/* Dial center knob */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-neutral-800 rounded-full border-2 border-neutral-600 shadow-inner"></div>
-            
-            {/* Filter indicator line */}
+            {/* Static Indicator (Scale line above) */}
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-3 bg-red-500 z-20 rounded-full"></div>
+
+            {/* Rotating Container */}
             <div 
-              className="absolute top-2 left-1/2 w-0.5 h-6 bg-red-500 transition-transform duration-300 origin-bottom"
+              className="w-full h-full transition-transform duration-500 ease-out"
               style={{ 
-                transform: `translateX(-50%) rotate(${activeFilterIndex * (360 / FILTERS.length)}deg)`
+                transform: `rotate(${-activeFilterIndex * (360 / FILTERS.length)}deg)`
               }}
-            ></div>
-            
-            {/* Filter positions around the dial */}
-            {FILTERS.map((filter, index) => {
-              const { x, y } = filterPositions[index];
+            >
+              {/* Dial center knob */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-neutral-800 rounded-full border-2 border-neutral-600 shadow-inner"></div>
               
-              return (
-                <button
-                  key={filter.name}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveFilter(filter);
-                  }}
-                  className={`
-                    absolute top-1/2 left-1/2 w-5 h-5 rounded-full border-2 shadow-lg transition-all
-                    ${activeFilter.name === filter.name 
-                      ? 'border-white scale-125 ring-2 ring-white/50 z-10' 
-                      : 'border-neutral-600 hover:scale-110 hover:border-neutral-400'
-                    }
-                  `}
-                  style={{ 
-                    backgroundColor: filter.color,
-                    transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
-                  }}
-                  title={filter.name}
-                />
-              );
-            })}
+              {/* Filter positions around the dial */}
+              {FILTERS.map((filter, index) => {
+                const { x, y } = filterPositions[index];
+                
+                return (
+                  <button
+                    key={filter.name}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveFilter(filter);
+                    }}
+                    className={`
+                      absolute top-1/2 left-1/2 w-5 h-5 rounded-full border-2 shadow-lg transition-all
+                      ${activeFilter.name === filter.name 
+                        ? 'border-white scale-125 ring-2 ring-white/50 z-10' 
+                        : 'border-neutral-600 hover:scale-110 hover:border-neutral-400'
+                      }
+                    `}
+                    style={{ 
+                      backgroundColor: filter.color,
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+                    }}
+                    title={filter.name}
+                  />
+                );
+              })}
+            </div>
             
             {/* Filter name label */}
             <div className="absolute -bottom-7 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
