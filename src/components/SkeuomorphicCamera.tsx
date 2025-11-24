@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 
 interface SkeuomorphicCameraProps {
   onTakePhoto: (photoUrl: string) => void;
@@ -20,6 +20,26 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
   const [printingPhotoUrl, setPrintingPhotoUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Memoize active filter index
+  const activeFilterIndex = useMemo(() => 
+    FILTERS.findIndex(f => f.name === activeFilter.name), 
+    [activeFilter]
+  );
+
+  // Memoize filter positions
+  const filterPositions = useMemo(() => 
+    FILTERS.map((_, index) => {
+      const angle = (index * 360 / FILTERS.length) - 90;
+      const radian = (angle * Math.PI) / 180;
+      const radius = 32;
+      return {
+        x: Math.cos(radian) * radius,
+        y: Math.sin(radian) * radius
+      };
+    }), 
+    []
+  );
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -93,13 +113,8 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         
-        // Clear any previous filter
-        context.filter = 'none';
-        
         // Apply the selected filter
-        if (activeFilter.value !== 'none') {
-          context.filter = activeFilter.value;
-        }
+        context.filter = activeFilter.value;
         
         // Draw the video frame with the filter applied
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -255,17 +270,13 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
             <div 
               className="absolute top-2 left-1/2 w-0.5 h-6 bg-red-500 transition-transform duration-300 origin-bottom"
               style={{ 
-                transform: `translateX(-50%) rotate(${FILTERS.findIndex(f => f.name === activeFilter.name) * (360 / FILTERS.length)}deg)`
+                transform: `translateX(-50%) rotate(${activeFilterIndex * (360 / FILTERS.length)}deg)`
               }}
             ></div>
             
             {/* Filter positions around the dial */}
             {FILTERS.map((filter, index) => {
-              const angle = (index * 360 / FILTERS.length) - 90; // Start from top
-              const radian = (angle * Math.PI) / 180;
-              const radius = 32;
-              const x = Math.cos(radian) * radius;
-              const y = Math.sin(radian) * radius;
+              const { x, y } = filterPositions[index];
               
               return (
                 <button
