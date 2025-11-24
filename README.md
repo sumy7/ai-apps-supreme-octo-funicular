@@ -1,36 +1,46 @@
-# ai-apps-supreme-octo-funicular
+# Online Polaroid Canvas
 
-An online polaroid apps powered by AI agent
+一个注重信息密度与操作效率的在线拍立得应用。
 
-This is a React + Vite project managed with pnpm.
+## 功能特点
 
-## Development
+- **虚拟拍立得相机**：调用浏览器摄像头实时拍摄。
+- **拍立得风格**：自动生成带有白边和时间戳的拍立得风格照片。
+- **自由画布**：照片像便利贴一样可以在画布上自由拖动、堆叠。
+- **数据持久化**：照片数据保存在本地浏览器中，刷新不丢失。
+- **响应式设计**：适配 PC 端宽屏布局，提供沉浸式体验。
 
-```bash
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Preview production build
-pnpm preview
-
-# Lint code
-pnpm lint
-```
-
-## Deployment
-
-This project is automatically deployed to GitHub Pages when changes are pushed to the main branch. The deployment is handled by GitHub Actions workflow.
-
-## Tech Stack
+## 技术栈
 
 - React 19
-- Vite 7
-- pnpm package manager
-- ESLint for code quality
+- TypeScript
+- Vite
+- Tailwind CSS
+- Lucide React (图标)
+- React Draggable (拖拽交互)
+- pnpm (包管理)
 
+## 快速开始
+
+1. 安装依赖：
+   ```bash
+   pnpm install
+   ```
+
+2. 启动开发服务器：
+   ```bash
+   pnpm dev
+   ```
+
+3. 构建生产版本：
+   ```bash
+   pnpm build
+   ```
+
+## 使用说明
+
+1. 点击右上角的相机图标打开拍摄界面。
+2. 允许浏览器访问摄像头权限。
+3. 点击红色拍摄按钮拍照。
+4. 照片会自动添加到画布上。
+5. 拖动照片调整位置，鼠标悬停可显示删除按钮。
