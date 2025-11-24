@@ -1,5 +1,5 @@
 import React from 'react';
-import Draggable from 'react-draggable';
+import Draggable, { type DraggableEvent } from 'react-draggable';
 import { Pin, Download } from 'lucide-react';
 
 export interface PhotoData {
@@ -15,7 +15,7 @@ export interface PhotoData {
 
 interface PhotoProps {
   data: PhotoData;
-  onDragStop: (id: string, x: number, y: number, e: any) => void;
+  onDragStop: (id: string, x: number, y: number, e: DraggableEvent) => void;
   onTogglePin: (id: string) => void;
 }
 

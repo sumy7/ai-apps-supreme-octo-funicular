@@ -3,26 +3,29 @@ import { Photo, type PhotoData } from './components/Photo';
 import { SkeuomorphicCamera } from './components/SkeuomorphicCamera';
 import { SkeuomorphicTrash } from './components/SkeuomorphicTrash';
 import { Camera as CameraIcon } from 'lucide-react';
+import type { DraggableEvent } from 'react-draggable';
 import './App.css';
 
 function App() {
-  const [photos, setPhotos] = useState<PhotoData[]>([]);
-  const trashRef = useRef<HTMLDivElement>(null);
-  const [isDraggingOverTrash, setIsDraggingOverTrash] = useState(false);
-
-  // Load photos from local storage on mount
-  useEffect(() => {
+  // Load photos from local storage on mount using lazy initializer
+  const [photos, setPhotos] = useState<PhotoData[]>(() => {
     const savedPhotos = localStorage.getItem('polaroid-photos');
     if (savedPhotos) {
       try {
         const parsed = JSON.parse(savedPhotos);
         // Ensure isNew is false for loaded photos so they don't animate again
-        setPhotos(parsed.map((p: PhotoData) => ({ ...p, isNew: false })));
+        return parsed.map((p: PhotoData) => ({ ...p, isNew: false }));
       } catch (e) {
         console.error('Failed to load photos', e);
+        return [];
       }
     }
-  }, []);
+    return [];
+  });
+  const trashRef = useRef<HTMLDivElement>(null);
+  const [isDraggingOverTrash, setIsDraggingOverTrash] = useState(false);
+
+  // Remove the old useEffect for loading photos as it's now in the initializer
 
   // Save photos to local storage whenever they change
   useEffect(() => {
@@ -55,13 +58,23 @@ function App() {
     );
   };
 
-  const handleDragStop = (id: string, x: number, y: number, e: any) => {
+  const handleDragStop = (id: string, x: number, y: number, e: DraggableEvent) => {
     // Check collision with trash can
     if (trashRef.current) {
       const trashRect = trashRef.current.getBoundingClientRect();
-      // Handle both mouse and touch events
-      const clientX = e.clientX || (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : 0);
-      const clientY = e.clientY || (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : 0);
+      // Handle both mouse and touch events with type guards
+      let clientX = 0;
+      let clientY = 0;
+      
+      if ('clientX' in e && 'clientY' in e) {
+        // Mouse event
+        clientX = e.clientX;
+        clientY = e.clientY;
+      } else if ('changedTouches' in e && e.changedTouches?.[0]) {
+        // Touch event
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+      }
 
       if (
         clientX >= trashRect.left &&
