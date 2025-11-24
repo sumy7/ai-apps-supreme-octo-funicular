@@ -1,6 +1,6 @@
 # ai-apps-supreme-octo-funicular
 
-A online polaroid apps powered by AI agent
+An online polaroid apps powered by AI agent
 
 This is a React + Vite project managed with pnpm.
 
