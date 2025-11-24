@@ -19,6 +19,9 @@ interface PhotoProps {
   onTogglePin: (id: string) => void;
 }
 
+// Animation constants
+const ANIMATION_POP_UP_DISTANCE = 80; // pixels to pop up during animation
+
 export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) => {
   const nodeRef = React.useRef(null);
   const [isAnimating, setIsAnimating] = React.useState(!!data.isNew);
@@ -118,7 +121,8 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
           style={isAnimating ? { 
             "--tx": `${deltaX}px`, 
             "--ty": `${deltaY}px`,
-            "--rotation": `${data.rotation}deg`
+            "--rotation": `${data.rotation}deg`,
+            "--pop-distance": `-${ANIMATION_POP_UP_DISTANCE}px`
           } as React.CSSProperties : {}}
           onAnimationEnd={() => setIsAnimating(false)}
         >
@@ -180,7 +184,7 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
               opacity: 0;
             }
             25% {
-              transform: translate(var(--tx), calc(var(--ty) - 80px)) scale(0.6) rotate(0deg);
+              transform: translate(var(--tx), calc(var(--ty) + var(--pop-distance))) scale(0.6) rotate(0deg);
               opacity: 1;
             }
             50% {
