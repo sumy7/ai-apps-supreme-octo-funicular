@@ -134,6 +134,10 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         // Due to mirroring, drawing at x=borderSize places it correctly
         context.drawImage(video, borderSize, borderSize, video.videoWidth, video.videoHeight);
         
+        // Flip the image horizontally to match the preview
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
         context.restore();
         
         // Reset filter to avoid affecting other operations
