@@ -69,14 +69,14 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         } catch (err) {
           console.error('Error accessing camera:', err);
           if (mounted) {
-            let errorMessage = '无法访问摄像头';
+            let errorMessage = 'Unable to access camera';
             if (err instanceof DOMException) {
               if (err.name === 'NotAllowedError') {
-                errorMessage = '请允许访问摄像头';
+                errorMessage = 'Please allow camera access';
               } else if (err.name === 'NotFoundError') {
-                errorMessage = '未找到摄像头设备';
+                errorMessage = 'Camera device not found';
               } else if (err.name === 'NotReadableError') {
-                errorMessage = '摄像头被占用';
+                errorMessage = 'Camera is in use';
               }
             }
             setError(errorMessage);

@@ -105,7 +105,7 @@ function App() {
           {photos.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none px-4">
               <CameraIcon size={64} className="mb-4 opacity-20" />
-              <p className="text-xl md:text-xl text-center font-light">点击左下角相机开始拍摄</p>
+              <p className="text-xl md:text-xl text-center font-light">Click the camera in the bottom left to start taking photos</p>
             </div>
           )}
           
