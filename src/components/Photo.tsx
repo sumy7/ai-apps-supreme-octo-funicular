@@ -32,12 +32,62 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const link = document.createElement('a');
-    link.href = data.url;
-    link.download = `polaroid-${data.timestamp}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    // Create a canvas to render the photo with polaroid border
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return;
+    
+    const img = new Image();
+    img.onload = () => {
+      // Polaroid proportions: image is 4:5 aspect ratio, with white border
+      // Border: 8% on sides, 8% on top, 16% on bottom
+      const borderTop = 0.08;
+      const borderSide = 0.08;
+      const borderBottom = 0.16;
+      
+      // Calculate dimensions
+      const imageWidth = img.width;
+      const imageHeight = img.height;
+      const canvasWidth = imageWidth * (1 + 2 * borderSide);
+      const canvasHeight = imageHeight * (1 + borderTop + borderBottom);
+      
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      
+      // Draw white background (polaroid border)
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+      
+      // Draw the image in the center with borders
+      const x = imageWidth * borderSide;
+      const y = imageHeight * borderTop;
+      ctx.drawImage(img, x, y, imageWidth, imageHeight);
+      
+      // Add timestamp at bottom
+      const timestamp = new Date(data.timestamp).toLocaleTimeString();
+      ctx.fillStyle = '#6b7280'; // gray-500
+      ctx.font = `${imageHeight * 0.04}px serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(timestamp, canvasWidth / 2, canvasHeight - imageHeight * borderBottom / 2.5);
+      
+      // Download the canvas as image
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `polaroid-${data.timestamp}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+        }
+      }, 'image/png');
+    };
+    
+    img.src = data.url;
   };
 
   return (

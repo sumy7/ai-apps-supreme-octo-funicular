@@ -116,8 +116,11 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         // Apply the selected filter
         context.filter = activeFilter.value;
         
-        // Draw the video frame with the filter applied
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Flip the image horizontally to match the preview
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+        context.restore();
         
         // Reset filter to avoid affecting other operations
         context.filter = 'none';
@@ -261,18 +264,18 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
           ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
           z-30
         `}>
-          {/* Dial Base */}
-          <div className="relative w-24 h-24 bg-neutral-900 rounded-full border-4 border-neutral-700 shadow-2xl">
+          {/* Static indicator line at top */}
+          <div className="absolute -top-8 left-1/2 w-0.5 h-6 bg-red-500 transform -translate-x-1/2 z-40"></div>
+          
+          {/* Dial Base - rotates entire dial */}
+          <div 
+            className="relative w-24 h-24 bg-neutral-900 rounded-full border-4 border-neutral-700 shadow-2xl transition-transform duration-300"
+            style={{ 
+              transform: `rotate(${-activeFilterIndex * (360 / FILTERS.length)}deg)`
+            }}
+          >
             {/* Dial center knob */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-neutral-800 rounded-full border-2 border-neutral-600 shadow-inner"></div>
-            
-            {/* Filter indicator line */}
-            <div 
-              className="absolute top-2 left-1/2 w-0.5 h-6 bg-red-500 transition-transform duration-300 origin-bottom"
-              style={{ 
-                transform: `translateX(-50%) rotate(${activeFilterIndex * (360 / FILTERS.length)}deg)`
-              }}
-            ></div>
             
             {/* Filter positions around the dial */}
             {FILTERS.map((filter, index) => {
@@ -294,19 +297,19 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
                   `}
                   style={{ 
                     backgroundColor: filter.color,
-                    transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+                    transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${activeFilterIndex * (360 / FILTERS.length)}deg)`
                   }}
                   title={filter.name}
                 />
               );
             })}
-            
-            {/* Filter name label */}
-            <div className="absolute -bottom-7 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-              <span className="text-xs font-bold text-neutral-300 bg-neutral-800/80 px-2 py-0.5 rounded">
-                {activeFilter.name}
-              </span>
-            </div>
+          </div>
+          
+          {/* Filter name label */}
+          <div className="absolute -bottom-7 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+            <span className="text-xs font-bold text-neutral-300 bg-neutral-800/80 px-2 py-0.5 rounded">
+              {activeFilter.name}
+            </span>
           </div>
         </div>
       </div>
