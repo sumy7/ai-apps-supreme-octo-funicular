@@ -44,19 +44,26 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
     
     const img = new Image();
     img.onload = () => {
-      // Polaroid proportions: image is 4:5 aspect ratio, with white border
-      // Border: 8% on sides, 8% on top, 16% on bottom
-      const borderTop = 0.08;
-      const borderSide = 0.08;
-      const borderBottom = 0.16;
+      // Polaroid Mimi proportions:
+      // Image area: 46mm × 62mm, Total: 54mm × 86mm
+      // Side borders: (54-46)/2 = 4mm each = 7.4% of total width
+      // Top border: ~4mm = 4.7% of total height
+      // Bottom border: ~20mm = 23.3% of total height
+      const BORDER_SIDE_RATIO = 4 / 54; // 7.4%
+      const BORDER_TOP_RATIO = 4 / 86; // 4.7%
+      const BORDER_BOTTOM_RATIO = 20 / 86; // 23.3%
       const TIMESTAMP_FONT_SIZE_RATIO = 0.04;
       const TIMESTAMP_VERTICAL_POSITION_DIVISOR = 2.5;
       
       // Calculate dimensions
       const imageWidth = img.width;
       const imageHeight = img.height;
-      const canvasWidth = imageWidth * (1 + 2 * borderSide);
-      const canvasHeight = imageHeight * (1 + borderTop + borderBottom);
+      const borderSide = imageWidth * BORDER_SIDE_RATIO;
+      const borderTop = imageHeight * BORDER_TOP_RATIO;
+      const borderBottom = imageHeight * BORDER_BOTTOM_RATIO;
+      
+      const canvasWidth = imageWidth + (borderSide * 2);
+      const canvasHeight = imageHeight + borderTop + borderBottom;
       
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
@@ -66,9 +73,7 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
       
       // Draw the image in the center with borders
-      const x = imageWidth * borderSide;
-      const y = imageHeight * borderTop;
-      ctx.drawImage(img, x, y, imageWidth, imageHeight);
+      ctx.drawImage(img, borderSide, borderTop, imageWidth, imageHeight);
       
       // Add timestamp at bottom
       const timestamp = new Date(data.timestamp).toLocaleTimeString('en-US', { 
@@ -81,7 +86,7 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
       ctx.fillText(
         timestamp, 
         canvasWidth / 2, 
-        canvasHeight - imageHeight * borderBottom / TIMESTAMP_VERTICAL_POSITION_DIVISOR
+        canvasHeight - borderBottom / TIMESTAMP_VERTICAL_POSITION_DIVISOR
       );
       
       // Download the canvas as image
@@ -127,7 +132,7 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
           onAnimationEnd={() => setIsAnimating(false)}
         >
           <div 
-            className="bg-white p-2 pb-8 md:p-3 md:pb-12 shadow-xl transition-transform hover:scale-105 hover:shadow-2xl w-48 md:w-64 relative"
+            className="bg-white p-3.5 pb-8 md:p-5 md:pb-11 shadow-xl transition-transform hover:scale-105 hover:shadow-2xl w-48 md:w-64 relative"
             style={{
               transform: isAnimating ? 'none' : `rotate(${data.rotation}deg)`,
             }}
@@ -139,7 +144,7 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
               </div>
             )}
 
-            <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden mb-2">
+            <div className="relative aspect-[46/62] bg-gray-100 overflow-hidden mb-2">
               <img
                 src={data.url}
                 alt="Polaroid"

@@ -110,35 +110,44 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
       const context = canvas.getContext('2d');
 
       if (context) {
-        // Define border size for Polaroid effect
-        const borderSize = 20;
-        const bottomBorder = 60;
+        // Polaroid Mimi proportions:
+        // Image area: 46mm × 62mm, Total: 54mm × 86mm
+        // Side borders: (54-46)/2 = 4mm each = 7.4% of width
+        // Top border: ~4mm = 4.7% of height  
+        // Bottom border: ~20mm = 23.3% of height (for caption area)
+        const BORDER_SIDE_RATIO = 4 / 54; // 7.4%
+        const BORDER_TOP_RATIO = 4 / 86; // 4.7%
+        const BORDER_BOTTOM_RATIO = 20 / 86; // 23.3%
         
-        // Set canvas size to include border
-        canvas.width = video.videoWidth + (borderSize * 2);
-        canvas.height = video.videoHeight + borderSize + bottomBorder;
+        // Calculate dimensions maintaining Mimi aspect ratio
+        const videoWidth = video.videoWidth;
+        const videoHeight = video.videoHeight;
         
-        // Fill white background
+        // Determine canvas dimensions based on Mimi proportions
+        const borderSidePixels = videoWidth * BORDER_SIDE_RATIO;
+        const borderTopPixels = videoHeight * BORDER_TOP_RATIO;
+        const borderBottomPixels = videoHeight * BORDER_BOTTOM_RATIO;
+        
+        // Set canvas size to include borders
+        canvas.width = videoWidth + (borderSidePixels * 2);
+        canvas.height = videoHeight + borderTopPixels + borderBottomPixels;
+        
+        // Fill white background (polaroid border)
         context.fillStyle = '#ffffff';
         context.fillRect(0, 0, canvas.width, canvas.height);
         
         // Apply the selected filter
         context.filter = activeFilter.value;
         
-        // Draw the video frame mirrored to match preview
-        context.save();
-        context.translate(canvas.width, 0);
-        context.scale(-1, 1);
-        
-        // Draw video centered horizontally within the borders
-        // Due to mirroring, drawing at x=borderSize places it correctly
-        context.drawImage(video, borderSize, borderSize, video.videoWidth, video.videoHeight);
-        
-        // Flip the image horizontally to match the preview
-        context.save();
-        context.scale(-1, 1);
-        context.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-        context.restore();
+        // Draw the video frame WITHOUT mirroring (capture as-is)
+        // The preview is mirrored for user experience, but captured photo should be natural
+        context.drawImage(
+          video, 
+          borderSidePixels, 
+          borderTopPixels, 
+          videoWidth, 
+          videoHeight
+        );
         
         // Reset filter to avoid affecting other operations
         context.filter = 'none';
