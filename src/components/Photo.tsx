@@ -115,13 +115,17 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
       >
         <div
           className={isAnimating ? "animate-fly-in" : ""}
-          style={isAnimating ? { "--tx": `${deltaX}px`, "--ty": `${deltaY}px` } as React.CSSProperties : {}}
+          style={isAnimating ? { 
+            "--tx": `${deltaX}px`, 
+            "--ty": `${deltaY}px`,
+            "--rotation": `${data.rotation}deg`
+          } as React.CSSProperties : {}}
           onAnimationEnd={() => setIsAnimating(false)}
         >
           <div 
             className="bg-white p-2 pb-8 md:p-3 md:pb-12 shadow-xl transition-transform hover:scale-105 hover:shadow-2xl w-48 md:w-64 relative"
             style={{
-              transform: `rotate(${data.rotation}deg)`,
+              transform: isAnimating ? 'none' : `rotate(${data.rotation}deg)`,
             }}
           >
             {/* Pin Indicator (Visible when pinned) */}
@@ -172,16 +176,24 @@ export const Photo: React.FC<PhotoProps> = ({ data, onDragStop, onTogglePin }) =
         <style>{`
           @keyframes flyIn {
             0% {
-              transform: translate(var(--tx), var(--ty)) scale(0.5);
+              transform: translate(var(--tx), var(--ty)) scale(0.5) rotate(0deg);
               opacity: 0;
             }
+            25% {
+              transform: translate(var(--tx), calc(var(--ty) - 80px)) scale(0.6) rotate(0deg);
+              opacity: 1;
+            }
+            50% {
+              transform: translate(calc(var(--tx) * 0.6), calc(var(--ty) * 0.6)) scale(0.8) rotate(calc(var(--rotation) * 0.3));
+              opacity: 1;
+            }
             100% {
-              transform: translate(0, 0) scale(1);
+              transform: translate(0, 0) scale(1) rotate(var(--rotation));
               opacity: 1;
             }
           }
           .animate-fly-in {
-            animation: flyIn 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            animation: flyIn 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
           }
         `}</style>
       </div>
