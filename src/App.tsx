@@ -6,6 +6,21 @@ import { Camera as CameraIcon } from 'lucide-react';
 import type { DraggableEvent } from 'react-draggable';
 import './App.css';
 
+// Helper function to extract client coordinates from DraggableEvent
+function getClientCoordinates(e: DraggableEvent): { clientX: number; clientY: number } {
+  if ('clientX' in e && 'clientY' in e) {
+    // Mouse event
+    return { clientX: e.clientX, clientY: e.clientY };
+  } else if ('changedTouches' in e && e.changedTouches?.[0]) {
+    // Touch event
+    return { 
+      clientX: e.changedTouches[0].clientX, 
+      clientY: e.changedTouches[0].clientY 
+    };
+  }
+  return { clientX: 0, clientY: 0 };
+}
+
 function App() {
   // Load photos from local storage on mount using lazy initializer
   const [photos, setPhotos] = useState<PhotoData[]>(() => {
@@ -24,8 +39,6 @@ function App() {
   });
   const trashRef = useRef<HTMLDivElement>(null);
   const [isDraggingOverTrash, setIsDraggingOverTrash] = useState(false);
-
-  // Remove the old useEffect for loading photos as it's now in the initializer
 
   // Save photos to local storage whenever they change
   useEffect(() => {
@@ -62,19 +75,7 @@ function App() {
     // Check collision with trash can
     if (trashRef.current) {
       const trashRect = trashRef.current.getBoundingClientRect();
-      // Handle both mouse and touch events with type guards
-      let clientX = 0;
-      let clientY = 0;
-      
-      if ('clientX' in e && 'clientY' in e) {
-        // Mouse event
-        clientX = e.clientX;
-        clientY = e.clientY;
-      } else if ('changedTouches' in e && e.changedTouches?.[0]) {
-        // Touch event
-        clientX = e.changedTouches[0].clientX;
-        clientY = e.changedTouches[0].clientY;
-      }
+      const { clientX, clientY } = getClientCoordinates(e);
 
       if (
         clientX >= trashRect.left &&
