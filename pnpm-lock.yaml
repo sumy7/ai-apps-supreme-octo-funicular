@@ -24,9 +24,6 @@ importers:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.1
-      '@rollup/rollup-darwin-x64':
-        specifier: ^4.53.2
-        version: 4.53.3
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
@@ -1663,7 +1660,8 @@ snapshots:
   '@rollup/rollup-darwin-arm64@4.53.3':
     optional: true
 
-  '@rollup/rollup-darwin-x64@4.53.3': {}
+  '@rollup/rollup-darwin-x64@4.53.3':
+    optional: true
 
   '@rollup/rollup-freebsd-arm64@4.53.3':
     optional: true

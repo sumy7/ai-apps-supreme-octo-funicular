@@ -17,7 +17,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@rollup/rollup-darwin-x64": "^4.53.2",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",

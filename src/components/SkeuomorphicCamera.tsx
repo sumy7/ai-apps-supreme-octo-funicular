@@ -1,7 +1,8 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 
 interface SkeuomorphicCameraProps {
   onTakePhoto: (photoUrl: string) => void;
+  hasPendingPhoto: boolean; // Whether there's a photo waiting to be placed
 }
 
 const FILTERS = [
@@ -12,14 +13,34 @@ const FILTERS = [
   { name: 'Cool', value: 'hue-rotate(180deg) contrast(90%)', color: '#4f46e5' },
 ];
 
-export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePhoto }) => {
+export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePhoto, hasPendingPhoto }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
   const [error, setError] = useState<string>('');
-  const [isPrinting, setIsPrinting] = useState(false);
-  const [printingPhotoUrl, setPrintingPhotoUrl] = useState<string | null>(null);
+  const [isEjecting, setIsEjecting] = useState(false);
+  const [ejectedPhotoUrl, setEjectedPhotoUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Memoize active filter index
+  const activeFilterIndex = useMemo(() => 
+    FILTERS.findIndex(f => f.name === activeFilter.name), 
+    [activeFilter]
+  );
+
+  // Memoize filter positions
+  const filterPositions = useMemo(() => 
+    FILTERS.map((_, index) => {
+      const angle = (index * 360 / FILTERS.length) - 90;
+      const radian = (angle * Math.PI) / 180;
+      const radius = 32;
+      return {
+        x: Math.cos(radian) * radius,
+        y: Math.sin(radian) * radius
+      };
+    }), 
+    []
+  );
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -49,14 +70,14 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         } catch (err) {
           console.error('Error accessing camera:', err);
           if (mounted) {
-            let errorMessage = '无法访问摄像头';
+            let errorMessage = 'Unable to access camera';
             if (err instanceof DOMException) {
               if (err.name === 'NotAllowedError') {
-                errorMessage = '请允许访问摄像头';
+                errorMessage = 'Please allow camera access';
               } else if (err.name === 'NotFoundError') {
-                errorMessage = '未找到摄像头设备';
+                errorMessage = 'Camera device not found';
               } else if (err.name === 'NotReadableError') {
-                errorMessage = '摄像头被占用';
+                errorMessage = 'Camera is in use';
               }
             }
             setError(errorMessage);
@@ -82,7 +103,8 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
       return;
     }
 
-    if (isPrinting) return;
+    // Block taking photos if there's a pending photo or currently ejecting
+    if (isEjecting || hasPendingPhoto) return;
 
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -90,20 +112,46 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
       const context = canvas.getContext('2d');
 
       if (context) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        // Polaroid Mimi proportions:
+        // Image area: 46mm × 62mm
+        // Crop video to 46:62 aspect ratio
+        const targetAspectRatio = 46 / 62;
+        const videoAspectRatio = video.videoWidth / video.videoHeight;
         
-        // Apply filter
+        let sourceX = 0, sourceY = 0, sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
+        
+        if (videoAspectRatio > targetAspectRatio) {
+          // Video is wider, crop sides
+          sourceWidth = video.videoHeight * targetAspectRatio;
+          sourceX = (video.videoWidth - sourceWidth) / 2;
+        } else {
+          // Video is taller, crop top/bottom
+          sourceHeight = video.videoWidth / targetAspectRatio;
+          sourceY = (video.videoHeight - sourceHeight) / 2;
+        }
+        
+        // Set canvas to cropped dimensions (no borders for the photo itself)
+        canvas.width = sourceWidth;
+        canvas.height = sourceHeight;
+        
+        // Apply the selected filter
         context.filter = activeFilter.value;
         
-        // Draw
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // Draw the cropped video frame
+        context.drawImage(
+          video,
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          0, 0, sourceWidth, sourceHeight
+        );
+        
+        // Reset filter
+        context.filter = 'none';
         
         const photoUrl = canvas.toDataURL('image/png');
         
-        // Start printing animation
-        setPrintingPhotoUrl(photoUrl);
-        setIsPrinting(true);
+        // Start ejecting animation
+        setIsEjecting(true);
+        setEjectedPhotoUrl(photoUrl);
 
         // Flash effect
         const flash = document.getElementById('camera-flash');
@@ -114,11 +162,11 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
           }, 100);
         }
 
-        // Finish printing after animation
+        // After eject animation, pass photo to parent and clear
         setTimeout(() => {
           onTakePhoto(photoUrl);
-          setIsPrinting(false);
-          setPrintingPhotoUrl(null);
+          setIsEjecting(false);
+          setEjectedPhotoUrl(null);
         }, 2000);
       }
     }
@@ -128,18 +176,23 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
     setIsOpen(!isOpen);
   };
 
+  // Determine if shutter should be disabled
+  const isShutterDisabled = !!error || isEjecting || hasPendingPhoto;
+
   return (
     <div 
       className={`
         relative transition-all duration-500 ease-in-out
-        ${isOpen ? 'w-72 h-64' : 'w-48 h-40'}
+        ${isOpen ? 'w-64 h-56 md:w-72 md:h-64' : 'w-36 h-32 md:w-48 md:h-40'}
       `}
     >
-      {/* Printing Photo Animation */}
-      {isPrinting && printingPhotoUrl && (
-        <div className="absolute left-1/2 top-8 transform -translate-x-1/2 w-40 h-48 bg-white p-2 shadow-xl z-10 animate-eject">
-          <div className="w-full h-32 bg-neutral-900 overflow-hidden mb-2">
-            <img src={printingPhotoUrl} className="w-full h-full object-cover" alt="Printing" />
+      {/* Ejecting Photo Animation */}
+      {isEjecting && ejectedPhotoUrl && (
+        <div className="absolute left-1/2 -top-4 transform -translate-x-1/2 z-[60] animate-eject-slow pointer-events-none">
+          <div className="bg-white p-2 pb-6 w-28 md:w-36 shadow-xl">
+            <div className="aspect-[46/62] bg-gray-100 overflow-hidden mb-1">
+              <img src={ejectedPhotoUrl} className="w-full h-full object-cover" alt="Ejecting" />
+            </div>
           </div>
         </div>
       )}
@@ -218,41 +271,76 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         {/* Shutter Button */}
         <button
           onClick={handleTakePhoto}
-          disabled={!!error}
+          disabled={isShutterDisabled}
           className={`
             absolute -top-3 right-12 rounded-t-lg border-b shadow-sm
             transition-all duration-300 
             ${isOpen ? 'w-12 h-6' : 'w-8 h-4'}
-            ${error 
+            ${isShutterDisabled
               ? 'bg-neutral-500 border-neutral-700 cursor-not-allowed' 
               : 'bg-red-600 border-red-800 hover:bg-red-500 active:translate-y-1 cursor-pointer'
             }
             z-0
           `}
-          title={error || "Take Photo"}
+          title={error || (hasPendingPhoto ? "Place current photo first" : "Take Photo")}
         ></button>
 
-        {/* Filter Controls (Only visible when open) */}
+        {/* Filter Dial (Only visible when open) - Skeuomorphic Design */}
         <div className={`
-          absolute bottom-3 left-0 w-full flex justify-center gap-2 transition-all duration-300
+          absolute -bottom-6 left-1/2 transform -translate-x-1/2 transition-all duration-300
           ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}
           z-30
         `}>
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.name}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveFilter(filter);
+          {/* Dial Base */}
+          <div className="relative w-24 h-24 bg-neutral-900 rounded-full border-4 border-neutral-700 shadow-2xl">
+            {/* Static Indicator (Scale line above) */}
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-1 h-3 bg-red-500 z-20 rounded-full"></div>
+
+            {/* Rotating Container */}
+            <div 
+              className="w-full h-full transition-transform duration-500 ease-out"
+              style={{ 
+                transform: `rotate(${-activeFilterIndex * (360 / FILTERS.length)}deg)`
               }}
-              className={`
-                w-6 h-6 rounded-full border-2 shadow-lg transition-transform hover:scale-125
-                ${activeFilter.name === filter.name ? 'border-white scale-110 ring-2 ring-white/50' : 'border-neutral-600'}
-              `}
-              style={{ backgroundColor: filter.color }}
-              title={filter.name}
-            />
-          ))}
+            >
+              {/* Dial center knob */}
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-neutral-800 rounded-full border-2 border-neutral-600 shadow-inner"></div>
+              
+              {/* Filter positions around the dial */}
+              {FILTERS.map((filter, index) => {
+                const { x, y } = filterPositions[index];
+                
+                return (
+                  <button
+                    key={filter.name}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveFilter(filter);
+                    }}
+                    className={`
+                      absolute top-1/2 left-1/2 w-5 h-5 rounded-full border-2 shadow-lg transition-all
+                      ${activeFilter.name === filter.name 
+                        ? 'border-white scale-125 ring-2 ring-white/50 z-10' 
+                        : 'border-neutral-600 hover:scale-110 hover:border-neutral-400'
+                      }
+                    `}
+                    style={{ 
+                      backgroundColor: filter.color,
+                      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`
+                    }}
+                    title={filter.name}
+                  />
+                );
+              })}
+            </div>
+            
+            {/* Filter name label */}
+            <div className="absolute -bottom-7 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+              <span className="text-xs font-bold text-neutral-300 bg-neutral-800/80 px-2 py-0.5 rounded">
+                {activeFilter.name}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -268,21 +356,21 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
             #5ac8fa 80%
           );
         }
-        @keyframes eject {
+        @keyframes eject-slow {
           0% {
-            transform: translate(-50%, 0) scale(0.9);
+            transform: translateX(-50%) translateY(100%);
             opacity: 0;
           }
-          20% {
+          30% {
             opacity: 1;
           }
           100% {
-            transform: translate(-50%, -120%) scale(1);
+            transform: translateX(-50%) translateY(-200%);
             opacity: 1;
           }
         }
-        .animate-eject {
-          animation: eject 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        .animate-eject-slow {
+          animation: eject-slow 2s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
         }
       `}</style>
     </div>
