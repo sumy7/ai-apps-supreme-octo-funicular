@@ -28,8 +28,8 @@ function App() {
     if (savedPhotos) {
       try {
         const parsed = JSON.parse(savedPhotos);
-        // Ensure isNew is false for loaded photos so they don't animate again
-        return parsed.map((p: PhotoData) => ({ ...p, isNew: false }));
+        // Ensure isPlaced is true for loaded photos
+        return parsed.map((p: PhotoData) => ({ ...p, isNew: false, isPlaced: true }));
       } catch (e) {
         console.error('Failed to load photos', e);
         return [];
@@ -37,12 +37,18 @@ function App() {
     }
     return [];
   });
+  
+  // Track if there's a pending photo that hasn't been placed yet
+  const [hasPendingPhoto, setHasPendingPhoto] = useState(false);
+  
   const trashRef = useRef<HTMLDivElement>(null);
   const [isDraggingOverTrash, setIsDraggingOverTrash] = useState(false);
 
   // Save photos to local storage whenever they change
   useEffect(() => {
-    localStorage.setItem('polaroid-photos', JSON.stringify(photos));
+    // Only save photos that have been placed
+    const placedPhotos = photos.filter(p => p.isPlaced);
+    localStorage.setItem('polaroid-photos', JSON.stringify(placedPhotos));
   }, [photos]);
 
   const handleTakePhoto = (photoUrl: string) => {
@@ -50,17 +56,25 @@ function App() {
       id: Date.now().toString(),
       url: photoUrl,
       timestamp: Date.now(),
-      x: Math.random() * (window.innerWidth - 300) + 100,
-      y: Math.random() * (window.innerHeight - 400) + 100,
+      x: 100, // Initial position near camera
+      y: typeof window !== 'undefined' ? window.innerHeight - 350 : 100,
       rotation: (Math.random() - 0.5) * 20, // Random rotation between -10 and 10 degrees
       isNew: true,
+      isPlaced: false, // Photo is not placed yet - needs to be dragged
     };
     
     setPhotos((prev) => [...prev, newPhoto]);
+    setHasPendingPhoto(true);
   };
 
   const handleDeletePhoto = (id: string) => {
+    const photo = photos.find(p => p.id === id);
     setPhotos((prev) => prev.filter((photo) => photo.id !== id));
+    
+    // If deleting a pending photo, allow taking new photos
+    if (photo && !photo.isPlaced) {
+      setHasPendingPhoto(false);
+    }
   };
 
   const handleTogglePin = (id: string) => {
@@ -71,7 +85,29 @@ function App() {
     );
   };
 
+  const handleDragStart = () => {
+    // Optional: could add visual feedback when dragging starts
+  };
+
+  const handleDrag = (_id: string, x: number, y: number) => {
+    // Check if near trash while dragging
+    if (trashRef.current) {
+      const trashRect = trashRef.current.getBoundingClientRect();
+      const photoCenter = { x: x + 96, y: y + 120 }; // Approximate center
+      
+      const isNearTrash = 
+        photoCenter.x >= trashRect.left - 50 &&
+        photoCenter.x <= trashRect.right + 50 &&
+        photoCenter.y >= trashRect.top - 50 &&
+        photoCenter.y <= trashRect.bottom + 50;
+      
+      setIsDraggingOverTrash(isNearTrash);
+    }
+  };
+
   const handleDragStop = (id: string, x: number, y: number, e: DraggableEvent) => {
+    const photo = photos.find(p => p.id === id);
+    
     // Check collision with trash can
     if (trashRef.current) {
       const trashRect = trashRef.current.getBoundingClientRect();
@@ -89,11 +125,20 @@ function App() {
       }
     }
 
+    // Check if this was a pending photo being placed
+    const wasPlaced = photo && !photo.isPlaced;
+
     setPhotos((prev) =>
       prev.map((photo) =>
-        photo.id === id ? { ...photo, x, y } : photo
+        photo.id === id ? { ...photo, x, y, isPlaced: true, isNew: false } : photo
       )
     );
+    
+    // If a pending photo was just placed, allow taking new photos
+    if (wasPlaced) {
+      setHasPendingPhoto(false);
+    }
+    
     setIsDraggingOverTrash(false);
   };
 
@@ -113,6 +158,8 @@ function App() {
             <Photo
               key={photo.id}
               data={photo}
+              onDragStart={handleDragStart}
+              onDrag={handleDrag}
               onDragStop={handleDragStop}
               onTogglePin={handleTogglePin}
             />
@@ -137,7 +184,8 @@ function App() {
       {/* Bottom Left Camera Trigger */}
       <div className="fixed bottom-4 left-4 md:bottom-10 md:left-10 z-50">
         <SkeuomorphicCamera 
-          onTakePhoto={handleTakePhoto} 
+          onTakePhoto={handleTakePhoto}
+          hasPendingPhoto={hasPendingPhoto}
         />
       </div>
     </div>

@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 
 interface SkeuomorphicCameraProps {
   onTakePhoto: (photoUrl: string) => void;
+  hasPendingPhoto: boolean; // Whether there's a photo waiting to be placed
 }
 
 const FILTERS = [
@@ -12,12 +13,12 @@ const FILTERS = [
   { name: 'Cool', value: 'hue-rotate(180deg) contrast(90%)', color: '#4f46e5' },
 ];
 
-export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePhoto }) => {
+export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePhoto, hasPendingPhoto }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState(FILTERS[0]);
   const [error, setError] = useState<string>('');
-  const [isPrinting, setIsPrinting] = useState(false);
-  const [printingPhotoUrl, setPrintingPhotoUrl] = useState<string | null>(null);
+  const [isEjecting, setIsEjecting] = useState(false);
+  const [ejectedPhotoUrl, setEjectedPhotoUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -102,7 +103,8 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
       return;
     }
 
-    if (isPrinting) return;
+    // Block taking photos if there's a pending photo or currently ejecting
+    if (isEjecting || hasPendingPhoto) return;
 
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
@@ -111,52 +113,45 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
 
       if (context) {
         // Polaroid Mimi proportions:
-        // Image area: 46mm × 62mm, Total: 54mm × 86mm
-        // Side borders: (54-46)/2 = 4mm each = 7.4% of width
-        // Top border: ~4mm = 4.7% of height  
-        // Bottom border: ~20mm = 23.3% of height (for caption area)
-        const BORDER_SIDE_RATIO = 4 / 54; // 7.4%
-        const BORDER_TOP_RATIO = 4 / 86; // 4.7%
-        const BORDER_BOTTOM_RATIO = 20 / 86; // 23.3%
+        // Image area: 46mm × 62mm
+        // Crop video to 46:62 aspect ratio
+        const targetAspectRatio = 46 / 62;
+        const videoAspectRatio = video.videoWidth / video.videoHeight;
         
-        // Calculate dimensions maintaining Mimi aspect ratio
-        const videoWidth = video.videoWidth;
-        const videoHeight = video.videoHeight;
+        let sourceX = 0, sourceY = 0, sourceWidth = video.videoWidth, sourceHeight = video.videoHeight;
         
-        // Determine canvas dimensions based on Mimi proportions
-        const borderSidePixels = videoWidth * BORDER_SIDE_RATIO;
-        const borderTopPixels = videoHeight * BORDER_TOP_RATIO;
-        const borderBottomPixels = videoHeight * BORDER_BOTTOM_RATIO;
+        if (videoAspectRatio > targetAspectRatio) {
+          // Video is wider, crop sides
+          sourceWidth = video.videoHeight * targetAspectRatio;
+          sourceX = (video.videoWidth - sourceWidth) / 2;
+        } else {
+          // Video is taller, crop top/bottom
+          sourceHeight = video.videoWidth / targetAspectRatio;
+          sourceY = (video.videoHeight - sourceHeight) / 2;
+        }
         
-        // Set canvas size to include borders
-        canvas.width = videoWidth + (borderSidePixels * 2);
-        canvas.height = videoHeight + borderTopPixels + borderBottomPixels;
-        
-        // Fill white background (polaroid border)
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, canvas.width, canvas.height);
+        // Set canvas to cropped dimensions (no borders for the photo itself)
+        canvas.width = sourceWidth;
+        canvas.height = sourceHeight;
         
         // Apply the selected filter
         context.filter = activeFilter.value;
         
-        // Draw the video frame WITHOUT mirroring (capture as-is)
-        // The preview is mirrored for user experience, but captured photo should be natural
+        // Draw the cropped video frame
         context.drawImage(
-          video, 
-          borderSidePixels, 
-          borderTopPixels, 
-          videoWidth, 
-          videoHeight
+          video,
+          sourceX, sourceY, sourceWidth, sourceHeight,
+          0, 0, sourceWidth, sourceHeight
         );
         
-        // Reset filter to avoid affecting other operations
+        // Reset filter
         context.filter = 'none';
         
         const photoUrl = canvas.toDataURL('image/png');
         
-        // Start printing animation
-        setPrintingPhotoUrl(photoUrl);
-        setIsPrinting(true);
+        // Start ejecting animation
+        setIsEjecting(true);
+        setEjectedPhotoUrl(photoUrl);
 
         // Flash effect
         const flash = document.getElementById('camera-flash');
@@ -167,11 +162,11 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
           }, 100);
         }
 
-        // Finish printing after animation
+        // After eject animation, pass photo to parent and clear
         setTimeout(() => {
           onTakePhoto(photoUrl);
-          setIsPrinting(false);
-          setPrintingPhotoUrl(null);
+          setIsEjecting(false);
+          setEjectedPhotoUrl(null);
         }, 2000);
       }
     }
@@ -181,6 +176,9 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
     setIsOpen(!isOpen);
   };
 
+  // Determine if shutter should be disabled
+  const isShutterDisabled = !!error || isEjecting || hasPendingPhoto;
+
   return (
     <div 
       className={`
@@ -188,11 +186,13 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         ${isOpen ? 'w-64 h-56 md:w-72 md:h-64' : 'w-36 h-32 md:w-48 md:h-40'}
       `}
     >
-      {/* Printing Photo Animation */}
-      {isPrinting && printingPhotoUrl && (
-        <div className="absolute left-1/2 top-8 transform -translate-x-1/2 w-40 h-48 bg-white p-2 shadow-xl z-10 animate-eject">
-          <div className="w-full h-32 bg-neutral-900 overflow-hidden mb-2">
-            <img src={printingPhotoUrl} className="w-full h-full object-cover" alt="Printing" />
+      {/* Ejecting Photo Animation */}
+      {isEjecting && ejectedPhotoUrl && (
+        <div className="absolute left-1/2 -top-4 transform -translate-x-1/2 z-[60] animate-eject-slow pointer-events-none">
+          <div className="bg-white p-2 pb-6 w-28 md:w-36 shadow-xl">
+            <div className="aspect-[46/62] bg-gray-100 overflow-hidden mb-1">
+              <img src={ejectedPhotoUrl} className="w-full h-full object-cover" alt="Ejecting" />
+            </div>
           </div>
         </div>
       )}
@@ -271,18 +271,18 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
         {/* Shutter Button */}
         <button
           onClick={handleTakePhoto}
-          disabled={!!error}
+          disabled={isShutterDisabled}
           className={`
             absolute -top-3 right-12 rounded-t-lg border-b shadow-sm
             transition-all duration-300 
             ${isOpen ? 'w-12 h-6' : 'w-8 h-4'}
-            ${error 
+            ${isShutterDisabled
               ? 'bg-neutral-500 border-neutral-700 cursor-not-allowed' 
               : 'bg-red-600 border-red-800 hover:bg-red-500 active:translate-y-1 cursor-pointer'
             }
             z-0
           `}
-          title={error || "Take Photo"}
+          title={error || (hasPendingPhoto ? "Place current photo first" : "Take Photo")}
         ></button>
 
         {/* Filter Dial (Only visible when open) - Skeuomorphic Design */}
@@ -356,21 +356,21 @@ export const SkeuomorphicCamera: React.FC<SkeuomorphicCameraProps> = ({ onTakePh
             #5ac8fa 80%
           );
         }
-        @keyframes eject {
+        @keyframes eject-slow {
           0% {
-            transform: translate(-50%, 0) scale(0.9);
+            transform: translateX(-50%) translateY(100%);
             opacity: 0;
           }
-          20% {
+          30% {
             opacity: 1;
           }
           100% {
-            transform: translate(-50%, -120%) scale(1);
+            transform: translateX(-50%) translateY(-200%);
             opacity: 1;
           }
         }
-        .animate-eject {
-          animation: eject 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        .animate-eject-slow {
+          animation: eject-slow 2s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
         }
       `}</style>
     </div>
